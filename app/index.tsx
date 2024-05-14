@@ -1,7 +1,7 @@
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { View } from "react-native";
+import { View, ScrollView } from "react-native";
 import BackgroundFetch from "react-native-background-fetch";
 import {
   TextInput,
@@ -160,7 +160,7 @@ export default function Index() {
     }
     console.log("time:", new Date().getTime() - now.getTime(), "ms");
     console.log(`Syncing ${days} days data...`);
-    logger(`正在同步 ${days} 日的資料...`);
+    logger(`正在傳送資料...`);
     const syncResult = await fetch(syncValue, {
       method: "POST",
       headers: {
@@ -169,6 +169,7 @@ export default function Index() {
       body: JSON.stringify(result),
     }).then((res) => res.text());
     logger(syncResult);
+    return syncResult;
   };
   return (
     <>
@@ -196,19 +197,33 @@ export default function Index() {
             />
           </Card.Content>
           <Card.Actions>
-            <Button onPress={(e) => handleSyncButtonClick(7)} loading={loading}>
+            <Button
+              onPress={(e) => handleSyncButtonClick(7)}
+              loading={loading}
+              disabled={loading}
+            >
               同步七日資料
             </Button>
             <Button
               mode="contained"
               onPress={(e) => handleSyncButtonClick(1)}
               loading={loading}
+              disabled={loading}
             >
               同步 24 小時資料
             </Button>
           </Card.Actions>
         </Card>
-        {log != "" && <Text className="font-mono">{log}</Text>}
+        {log != "" && (
+          <Card>
+            <Card.Content>
+              <Text variant="titleLarge">同步日誌</Text>
+              <ScrollView className="h-40">
+                <Text className="font-mono">{log}</Text>
+              </ScrollView>
+            </Card.Content>
+          </Card>
+        )}
         <Text>
           {lastAutoSync === ""
             ? "從未自動同步"
