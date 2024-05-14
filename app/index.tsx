@@ -173,6 +173,7 @@ export default function Index() {
     const syncResult = await fetch(syncValue, {
       method: "POST",
       headers: {
+        Accept: "text/plain",
         "Content-Type": "application/json",
       },
       body: JSON.stringify(result),
