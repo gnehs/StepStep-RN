@@ -209,7 +209,7 @@ export default function Index() {
           <Card.Content>
             <Text variant="titleLarge">同步</Text>
             <Text variant="bodyMedium">
-              我們會向你請求健康資料的權限，並將資料同步到您的伺服器上。
+              我們會向你請求健康資料的權限，並將資料同步到餅餅踏踏。
             </Text>
             <TextInput
               className="mt-2"
@@ -241,7 +241,7 @@ export default function Index() {
             <Card.Content>
               <Text variant="titleLarge">同步日誌</Text>
               <ScrollView className="h-40">
-                <Text className="font-mono">{log}</Text>
+                <Text>{log}</Text>
               </ScrollView>
             </Card.Content>
           </Card>
