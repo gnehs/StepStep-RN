@@ -82,11 +82,20 @@ export default function Index() {
 
     // Initialize BackgroundFetch only once when component mounts.
     let status = await BackgroundFetch.configure(
-      { minimumFetchInterval: 60 },
+      {
+        minimumFetchInterval: 15,
+        startOnBoot: true,
+        stopOnTerminate: false,
+        requiredNetworkType: BackgroundFetch.NETWORK_TYPE_ANY,
+      },
       onEvent,
       onTimeout
     );
-
+    BackgroundFetch.scheduleTask({
+      taskId: "com.transistorsoft.customtask",
+      delay: 5000,
+      periodic: true,
+    });
     console.log("[BackgroundFetch] configure status: ", status);
   }
   const syncData = async (
