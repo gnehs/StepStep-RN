@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "StepStep",
-    "slug": "StepStep",
+    "name": "餅餅踏踏",
+    "slug": "餅餅踏踏",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#f2f2f2"
     },
     "ios": {
       "supportsTablet": true
@@ -18,7 +18,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#f2f2f2"
       },
       "package": "tw.pancake.stepstep"
     },
