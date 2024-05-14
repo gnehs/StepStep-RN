@@ -18,6 +18,100 @@ import {
   aggregateRecord,
 } from "react-native-health-connect";
 import { Alert } from "react-native";
+const syncData = async (
+  days: number,
+  logger: (message: string) => void = console.log
+) => {
+  const syncURL = (await AsyncStorage.getItem("sync-api-url")) ?? "";
+  // initialize the client
+  logger("正在初始化...");
+  await initialize();
+
+  // request permissions
+  logger("正在請求權限...");
+  await requestPermission([
+    { accessType: "read", recordType: "Distance" },
+    { accessType: "read", recordType: "Steps" },
+    { accessType: "read", recordType: "ActiveCaloriesBurned" },
+  ]);
+  // get past 7 days and aggregate the data by hour
+  const tasks = days * 24;
+  const now = new Date();
+  const past = new Date(now.getTime() - tasks * 60 * 60 * 1000);
+  // set minutes & seconds to 0
+  past.setMinutes(0);
+  past.setSeconds(0);
+  past.setMilliseconds(0);
+  let result: {
+    distance: string[];
+    step: string[];
+    time: string[];
+    energy: string[];
+  } = {
+    distance: [],
+    step: [],
+    time: [],
+    energy: [],
+  };
+  for (let i = 0; i < tasks; i++) {
+    logger(`正在取得第 ${i + 1}/${tasks} 筆資料...`);
+    const startTime = new Date(past.getTime() + i * 60 * 60 * 1000);
+    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+    const distanceResult = await aggregateRecord({
+      recordType: "Distance",
+      timeRangeFilter: {
+        operator: "between",
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+      },
+    });
+    const stepsResult = await aggregateRecord({
+      recordType: "Steps",
+      timeRangeFilter: {
+        operator: "between",
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+      },
+    });
+    const activeCaloriesBurnedResult = await aggregateRecord({
+      recordType: "ActiveCaloriesBurned",
+      timeRangeFilter: {
+        operator: "between",
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+      },
+    });
+    result.distance.push(distanceResult.DISTANCE.inKilometers.toString());
+    result.step.push(stepsResult.COUNT_TOTAL.toString());
+    result.time.push(startTime.toISOString());
+    result.energy.push(
+      activeCaloriesBurnedResult.ACTIVE_CALORIES_TOTAL.inKilocalories.toString()
+    );
+  }
+  console.log("time:", new Date().getTime() - now.getTime(), "ms");
+  console.log(`Syncing ${days} days data...`);
+  logger(`正在傳送資料...`);
+  const syncResult = await fetch(syncURL, {
+    method: "POST",
+    headers: {
+      Accept: "text/plain",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(result),
+  }).then((res) => res.text());
+  logger(syncResult);
+  return syncResult;
+};
+async function BackgroundSyncTask(event: any) {
+  console.log("[BackgroundFetch HeadlessTask] start: ", event.taskId);
+  // Do your background work...
+  let syncResult = await syncData(1);
+  console.log("[BackgroundFetch HeadlessTask] syncResult: ", syncResult);
+  await AsyncStorage.setItem("last-auto-sync", new Date().toLocaleString());
+  // IMPORTANT:  You must signal to the OS that your task is complete.
+  BackgroundFetch.finish(event.taskId);
+}
+BackgroundFetch.registerHeadlessTask(BackgroundSyncTask);
 export default function Index() {
   const theme = useTheme();
   // Sync
@@ -93,94 +187,12 @@ export default function Index() {
     );
     BackgroundFetch.scheduleTask({
       taskId: "com.transistorsoft.customtask",
-      delay: 5000,
+      delay: 15 * 60 * 1000,
       periodic: true,
     });
     console.log("[BackgroundFetch] configure status: ", status);
   }
-  const syncData = async (
-    days: number,
-    logger: (message: string) => void = console.log
-  ) => {
-    // initialize the client
-    logger("正在初始化...");
-    await initialize();
 
-    // request permissions
-    logger("正在請求權限...");
-    await requestPermission([
-      { accessType: "read", recordType: "Distance" },
-      { accessType: "read", recordType: "Steps" },
-      { accessType: "read", recordType: "ActiveCaloriesBurned" },
-    ]);
-    // get past 7 days and aggregate the data by hour
-    const tasks = days * 24;
-    const now = new Date();
-    const past = new Date(now.getTime() - tasks * 60 * 60 * 1000);
-    // set minutes & seconds to 0
-    past.setMinutes(0);
-    past.setSeconds(0);
-    past.setMilliseconds(0);
-    let result: {
-      distance: string[];
-      step: string[];
-      time: string[];
-      energy: string[];
-    } = {
-      distance: [],
-      step: [],
-      time: [],
-      energy: [],
-    };
-    for (let i = 0; i < tasks; i++) {
-      logger(`正在取得第 ${i + 1}/${tasks} 筆資料...`);
-      const startTime = new Date(past.getTime() + i * 60 * 60 * 1000);
-      const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
-      const distanceResult = await aggregateRecord({
-        recordType: "Distance",
-        timeRangeFilter: {
-          operator: "between",
-          startTime: startTime.toISOString(),
-          endTime: endTime.toISOString(),
-        },
-      });
-      const stepsResult = await aggregateRecord({
-        recordType: "Steps",
-        timeRangeFilter: {
-          operator: "between",
-          startTime: startTime.toISOString(),
-          endTime: endTime.toISOString(),
-        },
-      });
-      const activeCaloriesBurnedResult = await aggregateRecord({
-        recordType: "ActiveCaloriesBurned",
-        timeRangeFilter: {
-          operator: "between",
-          startTime: startTime.toISOString(),
-          endTime: endTime.toISOString(),
-        },
-      });
-      result.distance.push(distanceResult.DISTANCE.inKilometers.toString());
-      result.step.push(stepsResult.COUNT_TOTAL.toString());
-      result.time.push(startTime.toISOString());
-      result.energy.push(
-        activeCaloriesBurnedResult.ACTIVE_CALORIES_TOTAL.inKilocalories.toString()
-      );
-    }
-    console.log("time:", new Date().getTime() - now.getTime(), "ms");
-    console.log(`Syncing ${days} days data...`);
-    logger(`正在傳送資料...`);
-    const syncResult = await fetch(syncValue, {
-      method: "POST",
-      headers: {
-        Accept: "text/plain",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(result),
-    }).then((res) => res.text());
-    logger(syncResult);
-    return syncResult;
-  };
   return (
     <>
       <Appbar.Header>
