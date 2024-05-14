@@ -13,12 +13,10 @@ jobs:
           distribution: "adopt"
           java-version: "17"
           cache: "gradle"
-      - name: Validate Gradle wrapper
-        uses: gradle/wrapper-validation-action@v1
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
-          node-version: "18"
+          node-version: "22"
       - name: Install npm dependencies
         run: |
           npm install
@@ -29,4 +27,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-release.apk
-          path: android/app/build/outputs/apk/release/
+          path: android/app/build/outputs/apk/release/app-release.apk
