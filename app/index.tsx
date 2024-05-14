@@ -1,4 +1,3 @@
-import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { View, ScrollView } from "react-native";
@@ -11,6 +10,7 @@ import {
   useTheme,
   Card,
   Appbar,
+  List,
 } from "react-native-paper";
 
 import {
@@ -34,7 +34,7 @@ TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
 });
 async function registerBackgroundFetchAsync() {
   return BackgroundFetch.registerTaskAsync(BACKGROUND_FETCH_TASK, {
-    minimumInterval: 60, // 15 minutes
+    minimumInterval: 60 * 15, // 15 minutes
     stopOnTerminate: true, // android only,
     startOnBoot: true, // android only
   });
@@ -128,6 +128,33 @@ const syncData = async (
 };
 export default function Index() {
   const theme = useTheme();
+  // Background Fetch
+
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [status, setStatus] = useState(null);
+
+  useEffect(() => {
+    checkStatusAsync();
+  }, []);
+
+  const checkStatusAsync = async () => {
+    const status = await BackgroundFetch.getStatusAsync();
+    const isRegistered = await TaskManager.isTaskRegisteredAsync(
+      BACKGROUND_FETCH_TASK
+    );
+    setStatus(status);
+    setIsRegistered(isRegistered);
+  };
+
+  const toggleFetchTask = async () => {
+    if (isRegistered) {
+      await unregisterBackgroundFetchAsync();
+    } else {
+      await registerBackgroundFetchAsync();
+    }
+
+    checkStatusAsync();
+  };
   // Sync
   const [syncValue, setSyncValue] = useState("");
   const [lastAutoSync, setLastAutoSync] = useState("");
@@ -171,15 +198,12 @@ export default function Index() {
   return (
     <>
       <Appbar.Header>
-        <Appbar.Content title="餅餅踏踏" />
+        <Appbar.Content title="餅餅踏踏記錄器" />
       </Appbar.Header>
       <View
-        className="px-4 flex flex-col gap-2 h-full"
+        className="flex flex-col gap-2 h-full px-4"
         style={{ backgroundColor: theme.colors.surface }}
       >
-        <Text variant="bodyLarge">
-          歡迎來到餅餅踏踏！在下方輸入您的同步網址，並同意授權後便可開啟自動同步了！
-        </Text>
         <Card>
           <Card.Content>
             <Text variant="titleLarge">同步</Text>
@@ -192,8 +216,6 @@ export default function Index() {
               value={syncValue}
               onChangeText={setSyncValue}
             />
-          </Card.Content>
-          <Card.Actions>
             <Button
               onPress={(e) => handleSyncButtonClick(7)}
               loading={loading}
@@ -209,7 +231,7 @@ export default function Index() {
             >
               同步 24 小時資料
             </Button>
-          </Card.Actions>
+          </Card.Content>
         </Card>
         {log != "" && (
           <Card>
@@ -221,11 +243,34 @@ export default function Index() {
             </Card.Content>
           </Card>
         )}
-        <Text>
-          {lastAutoSync === ""
-            ? "從未自動同步"
-            : `上次自動同步：${lastAutoSync}`}
-        </Text>
+        <Card>
+          <Card.Content>
+            <Text variant="titleLarge">自動同步</Text>
+          </Card.Content>
+          <List.Section>
+            <List.Item
+              title="自動同步狀態"
+              description={isRegistered ? "已啟用" : "未啟用"}
+              left={(props) => <List.Icon {...props} icon="cog" />}
+            />
+            <List.Item
+              title="自動同步"
+              description={lastAutoSync === "" ? "從未自動同步" : lastAutoSync}
+              left={(props) => <List.Icon {...props} icon="history" />}
+            />
+            <List.Item
+              onPress={toggleFetchTask}
+              title={isRegistered ? "停用自動同步" : "啟用自動同步"}
+              left={(props) =>
+                isRegistered ? (
+                  <List.Icon {...props} icon="sync" />
+                ) : (
+                  <List.Icon {...props} icon="sync-off" />
+                )
+              }
+            />
+          </List.Section>
+        </Card>
       </View>
     </>
   );
