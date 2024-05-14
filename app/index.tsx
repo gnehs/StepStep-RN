@@ -2,6 +2,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { View } from "react-native";
+import BackgroundFetch from "react-native-background-fetch";
 import {
   TextInput,
   Text,
@@ -21,20 +22,23 @@ export default function Index() {
   const theme = useTheme();
   // Sync
   const [syncValue, setSyncValue] = useState("");
+  const [lastAutoSync, setLastAutoSync] = useState("");
+  const [loading, setLoading] = useState(false);
   useEffect(() => {
-    fetchSyncURL();
+    fetchSyncData();
   }, []);
   useEffect(() => {
     if (syncValue === "") return;
     updateSyncURL();
   }, [syncValue]);
-  async function fetchSyncURL() {
+  async function fetchSyncData() {
     setSyncValue((await AsyncStorage.getItem("sync-api-url")) ?? "");
+    setLastAutoSync((await AsyncStorage.getItem("last-auto-sync")) ?? "");
   }
   async function updateSyncURL() {
     await AsyncStorage.setItem("sync-api-url", syncValue);
   }
-  async function sync(days: number = 1) {
+  async function handleSyncButtonClick(days: number = 1) {
     // verify the URL
     let url;
     console.log(syncValue);
@@ -46,11 +50,43 @@ export default function Index() {
     }
 
     // sync the data
-    let syncResult = await readSampleData(days);
+    setLoading(true);
+    let syncResult = await syncData(days);
+    setLoading(false);
 
+    initBackgroundFetch();
     Alert.alert("同步成功", syncResult);
   }
-  const readSampleData = async (days: number) => {
+
+  async function initBackgroundFetch() {
+    // BackgroundFetch event handler.
+    const onEvent = async (taskId: string) => {
+      console.log("[BackgroundFetch] task: ", taskId);
+      // Do your background work...
+      let syncResult = await syncData(1);
+      console.log("[BackgroundFetch] syncResult: ", syncResult);
+      await AsyncStorage.setItem("last-auto-sync", new Date().toLocaleString());
+      // IMPORTANT:  You must signal to the OS that your task is complete.
+      BackgroundFetch.finish(taskId);
+    };
+
+    // Timeout callback is executed when your Task has exceeded its allowed running-time.
+    // You must stop what you're doing immediately BackgroundFetch.finish(taskId)
+    const onTimeout = async (taskId: string) => {
+      console.warn("[BackgroundFetch] TIMEOUT task: ", taskId);
+      BackgroundFetch.finish(taskId);
+    };
+
+    // Initialize BackgroundFetch only once when component mounts.
+    let status = await BackgroundFetch.configure(
+      { minimumFetchInterval: 60 },
+      onEvent,
+      onTimeout
+    );
+
+    console.log("[BackgroundFetch] configure status: ", status);
+  }
+  const syncData = async (days: number) => {
     // initialize the client
     await initialize();
 
@@ -114,7 +150,7 @@ export default function Index() {
       );
     }
     console.log("time:", new Date().getTime() - now.getTime(), "ms");
-    console.log(JSON.stringify(result, null, 2));
+    console.log(`Syncing ${days} days data...`);
     return await fetch(syncValue, {
       method: "POST",
       headers: {
@@ -149,12 +185,23 @@ export default function Index() {
             />
           </Card.Content>
           <Card.Actions>
-            <Button onPress={(e) => sync(7)}>同步七日資料</Button>
-            <Button mode="contained" onPress={(e) => sync(1)}>
+            <Button onPress={(e) => handleSyncButtonClick(7)} loading={loading}>
+              同步七日資料
+            </Button>
+            <Button
+              mode="contained"
+              onPress={(e) => handleSyncButtonClick(1)}
+              loading={loading}
+            >
               同步 24 小時資料
             </Button>
           </Card.Actions>
         </Card>
+        <Text>
+          {lastAutoSync === ""
+            ? "從未自動同步"
+            : `上次自動同步：${lastAutoSync}`}
+        </Text>
       </View>
     </>
   );

@@ -10,5 +10,6 @@
 # react-native-reanimated
 -keep class com.swmansion.reanimated.** { *; }
 -keep class com.facebook.react.turbomodule.** { *; }
-
+# [react-native-background-fetch]
+-keep class com.transistorsoft.rnbackgroundfetch.HeadlessTask { *; }
 # Add any project specific keep options here:
