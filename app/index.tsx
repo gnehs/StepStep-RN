@@ -2,7 +2,8 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { View, ScrollView } from "react-native";
-import BackgroundFetch from "react-native-background-fetch";
+import * as BackgroundFetch from "expo-background-fetch";
+import * as TaskManager from "expo-task-manager";
 import {
   TextInput,
   Text,
@@ -18,6 +19,29 @@ import {
   aggregateRecord,
 } from "react-native-health-connect";
 import { Alert } from "react-native";
+
+const BACKGROUND_FETCH_TASK = "background-fetch";
+TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
+  const now = Date.now();
+
+  console.log(
+    `Got background fetch call at date: ${new Date(now).toISOString()}`
+  );
+  await syncData(1);
+  await AsyncStorage.setItem("last-auto-sync", new Date().toLocaleString());
+  // Be sure to return the successful result type!
+  return BackgroundFetch.BackgroundFetchResult.NewData;
+});
+async function registerBackgroundFetchAsync() {
+  return BackgroundFetch.registerTaskAsync(BACKGROUND_FETCH_TASK, {
+    minimumInterval: 60, // 15 minutes
+    stopOnTerminate: true, // android only,
+    startOnBoot: true, // android only
+  });
+}
+async function unregisterBackgroundFetchAsync() {
+  return BackgroundFetch.unregisterTaskAsync(BACKGROUND_FETCH_TASK);
+}
 const syncData = async (
   days: number,
   logger: (message: string) => void = console.log
@@ -102,16 +126,6 @@ const syncData = async (
   logger(syncResult);
   return syncResult;
 };
-async function BackgroundSyncTask(event: any) {
-  console.log("[BackgroundFetch HeadlessTask] start: ", event.taskId);
-  // Do your background work...
-  let syncResult = await syncData(1);
-  console.log("[BackgroundFetch HeadlessTask] syncResult: ", syncResult);
-  await AsyncStorage.setItem("last-auto-sync", new Date().toLocaleString());
-  // IMPORTANT:  You must signal to the OS that your task is complete.
-  BackgroundFetch.finish(event.taskId);
-}
-BackgroundFetch.registerHeadlessTask(BackgroundSyncTask);
 export default function Index() {
   const theme = useTheme();
   // Sync
@@ -150,47 +164,8 @@ export default function Index() {
       setLog((log) => message + "\n" + log);
     });
     setLoading(false);
-
-    initBackgroundFetch();
+    await registerBackgroundFetchAsync();
     Alert.alert("同步成功", syncResult);
-  }
-
-  async function initBackgroundFetch() {
-    // BackgroundFetch event handler.
-    const onEvent = async (taskId: string) => {
-      console.log("[BackgroundFetch] task: ", taskId);
-      // Do your background work...
-      let syncResult = await syncData(1);
-      console.log("[BackgroundFetch] syncResult: ", syncResult);
-      await AsyncStorage.setItem("last-auto-sync", new Date().toLocaleString());
-      // IMPORTANT:  You must signal to the OS that your task is complete.
-      BackgroundFetch.finish(taskId);
-    };
-
-    // Timeout callback is executed when your Task has exceeded its allowed running-time.
-    // You must stop what you're doing immediately BackgroundFetch.finish(taskId)
-    const onTimeout = async (taskId: string) => {
-      console.warn("[BackgroundFetch] TIMEOUT task: ", taskId);
-      BackgroundFetch.finish(taskId);
-    };
-
-    // Initialize BackgroundFetch only once when component mounts.
-    let status = await BackgroundFetch.configure(
-      {
-        minimumFetchInterval: 15,
-        startOnBoot: true,
-        stopOnTerminate: false,
-        requiredNetworkType: BackgroundFetch.NETWORK_TYPE_ANY,
-      },
-      onEvent,
-      onTimeout
-    );
-    BackgroundFetch.scheduleTask({
-      taskId: "com.transistorsoft.customtask",
-      delay: 15 * 60 * 1000,
-      periodic: true,
-    });
-    console.log("[BackgroundFetch] configure status: ", status);
   }
 
   return (
