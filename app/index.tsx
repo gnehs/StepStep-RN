@@ -24,6 +24,7 @@ export default function Index() {
   const [syncValue, setSyncValue] = useState("");
   const [lastAutoSync, setLastAutoSync] = useState("");
   const [loading, setLoading] = useState(false);
+  const [log, setLog] = useState("");
   useEffect(() => {
     fetchSyncData();
   }, []);
@@ -51,7 +52,9 @@ export default function Index() {
 
     // sync the data
     setLoading(true);
-    let syncResult = await syncData(days);
+    let syncResult = await syncData(days, (message) => {
+      setLog((log) => message + "\n" + log);
+    });
     setLoading(false);
 
     initBackgroundFetch();
@@ -86,11 +89,16 @@ export default function Index() {
 
     console.log("[BackgroundFetch] configure status: ", status);
   }
-  const syncData = async (days: number) => {
+  const syncData = async (
+    days: number,
+    logger: (message: string) => void = console.log
+  ) => {
     // initialize the client
+    logger("正在初始化...");
     await initialize();
 
     // request permissions
+    logger("正在請求權限...");
     await requestPermission([
       { accessType: "read", recordType: "Distance" },
       { accessType: "read", recordType: "Steps" },
@@ -116,6 +124,7 @@ export default function Index() {
       energy: [],
     };
     for (let i = 0; i < tasks; i++) {
+      logger(`正在取得第 ${i + 1}/${tasks} 筆資料...`);
       const startTime = new Date(past.getTime() + i * 60 * 60 * 1000);
       const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
       const distanceResult = await aggregateRecord({
@@ -151,13 +160,15 @@ export default function Index() {
     }
     console.log("time:", new Date().getTime() - now.getTime(), "ms");
     console.log(`Syncing ${days} days data...`);
-    return await fetch(syncValue, {
+    logger(`正在同步 ${days} 日的資料...`);
+    const syncResult = await fetch(syncValue, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(result),
     }).then((res) => res.text());
+    logger(syncResult);
   };
   return (
     <>
@@ -197,6 +208,7 @@ export default function Index() {
             </Button>
           </Card.Actions>
         </Card>
+        {log != "" && <Text className="font-mono">{log}</Text>}
         <Text>
           {lastAutoSync === ""
             ? "從未自動同步"
