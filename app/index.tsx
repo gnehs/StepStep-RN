@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { View, ScrollView } from "react-native";
-import * as BackgroundFetch from "expo-background-fetch";
-import * as TaskManager from "expo-task-manager";
+import BackgroundFetch from "react-native-background-fetch";
+
 import {
   TextInput,
   Text,
@@ -20,29 +20,27 @@ import {
   aggregateRecord,
 } from "react-native-health-connect";
 import { Alert } from "react-native";
-import { set } from "sync-storage";
 
-const BACKGROUND_FETCH_TASK = "background-fetch";
-TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
-  const now = Date.now();
-
-  console.log(
-    `Got background fetch call at date: ${new Date(now).toISOString()}`
-  );
+const onEvent = async (taskId: string) => {
+  console.log("[BackgroundFetch] task: ", taskId);
+  console.log(`Got background fetch call at date: ${new Date().toISOString()}`);
+  // Do your background work...
   await syncData(1);
+
   await AsyncStorage.setItem("last-auto-sync", new Date().toLocaleString());
-  // Be sure to return the successful result type!
-  return BackgroundFetch.BackgroundFetchResult.NewData;
-});
+  // IMPORTANT:  You must signal to the OS that your task is complete.
+  BackgroundFetch.finish(taskId);
+};
+const onTimeout = async (taskId: string) => {
+  console.warn("[BackgroundFetch] TIMEOUT task: ", taskId);
+  BackgroundFetch.finish(taskId);
+};
 async function registerBackgroundFetchAsync() {
-  return BackgroundFetch.registerTaskAsync(BACKGROUND_FETCH_TASK, {
-    minimumInterval: 60 * 15, // 15 minutes
-    stopOnTerminate: true, // android only,
-    startOnBoot: true, // android only
-  });
-}
-async function unregisterBackgroundFetchAsync() {
-  return BackgroundFetch.unregisterTaskAsync(BACKGROUND_FETCH_TASK);
+  return await BackgroundFetch.configure(
+    { minimumFetchInterval: 60 },
+    onEvent,
+    onTimeout
+  );
 }
 const syncData = async (
   days: number,
@@ -130,33 +128,6 @@ const syncData = async (
 };
 export default function Index() {
   const theme = useTheme();
-  // Background Fetch
-
-  const [isRegistered, setIsRegistered] = useState(false);
-  const [status, setStatus] = useState(null);
-
-  useEffect(() => {
-    checkStatusAsync();
-  }, []);
-
-  const checkStatusAsync = async () => {
-    const status = await BackgroundFetch.getStatusAsync();
-    const isRegistered = await TaskManager.isTaskRegisteredAsync(
-      BACKGROUND_FETCH_TASK
-    );
-    setStatus(status);
-    setIsRegistered(isRegistered);
-  };
-
-  const toggleFetchTask = async () => {
-    if (isRegistered) {
-      await unregisterBackgroundFetchAsync();
-    } else {
-      await registerBackgroundFetchAsync();
-    }
-
-    checkStatusAsync();
-  };
   // Sync
   const [syncValue, setSyncValue] = useState("");
   const [lastAutoSync, setLastAutoSync] = useState("");
@@ -276,27 +247,11 @@ export default function Index() {
             </Card.Content>
             <List.Section>
               <List.Item
-                title="自動同步狀態"
-                description={isRegistered ? "已啟用" : "未啟用"}
-                left={(props) => <List.Icon {...props} icon="cog" />}
-              />
-              <List.Item
                 title="自動同步"
                 description={
                   lastAutoSync === "" ? "從未自動同步" : lastAutoSync
                 }
                 left={(props) => <List.Icon {...props} icon="history" />}
-              />
-              <List.Item
-                onPress={toggleFetchTask}
-                title={isRegistered ? "停用自動同步" : "啟用自動同步"}
-                left={(props) =>
-                  isRegistered ? (
-                    <List.Icon {...props} icon="sync" />
-                  ) : (
-                    <List.Icon {...props} icon="sync-off" />
-                  )
-                }
               />
             </List.Section>
           </Card>
