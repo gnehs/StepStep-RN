@@ -8,6 +8,7 @@ import {
   Text,
   Button,
   useTheme,
+  Chip,
   Card,
   Appbar,
   List,
@@ -19,6 +20,7 @@ import {
   aggregateRecord,
 } from "react-native-health-connect";
 import { Alert } from "react-native";
+import { set } from "sync-storage";
 
 const BACKGROUND_FETCH_TASK = "background-fetch";
 TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
@@ -159,6 +161,7 @@ export default function Index() {
   const [syncValue, setSyncValue] = useState("");
   const [lastAutoSync, setLastAutoSync] = useState("");
   const [loading, setLoading] = useState(false);
+  const [period, setPeriod] = useState(1);
   const [log, setLog] = useState("");
   useEffect(() => {
     fetchSyncData();
@@ -197,80 +200,107 @@ export default function Index() {
 
   return (
     <>
-      <Appbar.Header>
+      <Appbar.Header className="z-50">
         <Appbar.Content title="餅餅踏踏記錄器" />
       </Appbar.Header>
       <View
-        className="flex flex-col gap-2 h-full px-4"
+        className="flex flex-col gap-2 h-full flex-1"
         style={{ backgroundColor: theme.colors.surface }}
       >
-        <Card>
-          <Card.Content>
-            <Text variant="titleLarge">同步</Text>
-            <Text variant="bodyMedium">
-              我們會向你請求健康資料的權限，並將資料同步到餅餅踏踏。
-            </Text>
-            <TextInput
-              className="mt-2"
-              label="同步網址"
-              value={syncValue}
-              onChangeText={setSyncValue}
-            />
-            <Button
-              onPress={(e) => handleSyncButtonClick(7)}
-              loading={loading}
-              disabled={loading}
-            >
-              同步七日資料
-            </Button>
-            <Button
-              mode="contained"
-              onPress={(e) => handleSyncButtonClick(1)}
-              loading={loading}
-              disabled={loading}
-            >
-              同步 24 小時資料
-            </Button>
-          </Card.Content>
-        </Card>
-        {log != "" && (
-          <Card>
+        <ScrollView
+          className="flex flex-col gap-2 pr-2"
+          nestedScrollEnabled={true}
+          style={{
+            overflow: "visible",
+            backgroundColor: theme.colors.background,
+          }}
+        >
+          <Card mode="contained">
             <Card.Content>
-              <Text variant="titleLarge">同步日誌</Text>
-              <ScrollView className="h-40">
-                <Text>{log}</Text>
-              </ScrollView>
+              <Text variant="titleLarge">同步</Text>
+              <Text variant="bodyMedium">
+                我們會向你請求健康資料的權限，並將資料同步到餅餅踏踏。
+              </Text>
+              <TextInput
+                className="mt-2"
+                label="同步網址"
+                value={syncValue}
+                onChangeText={setSyncValue}
+              />
+              <View className="flex flex-row gap-2 my-2">
+                {[1, 5, 7].map((i) => {
+                  return (
+                    <Chip
+                      onPress={() => setPeriod(i)}
+                      key={i}
+                      selected={period === i}
+                      style={{
+                        backgroundColor:
+                          period === i
+                            ? theme.colors.inversePrimary
+                            : theme.colors.surface,
+                      }}
+                    >
+                      {i} 天
+                    </Chip>
+                  );
+                })}
+              </View>
+              <Button
+                mode="contained"
+                onPress={(e) => handleSyncButtonClick(period)}
+                loading={loading}
+                disabled={loading}
+                style={{
+                  backgroundColor: theme.colors.primary,
+                  borderRadius: 10,
+                }}
+              >
+                同步 {period} 天資料
+              </Button>
             </Card.Content>
           </Card>
-        )}
-        <Card>
-          <Card.Content>
-            <Text variant="titleLarge">自動同步</Text>
-          </Card.Content>
-          <List.Section>
-            <List.Item
-              title="自動同步狀態"
-              description={isRegistered ? "已啟用" : "未啟用"}
-              left={(props) => <List.Icon {...props} icon="cog" />}
-            />
-            <List.Item
-              title="自動同步"
-              description={lastAutoSync === "" ? "從未自動同步" : lastAutoSync}
-              left={(props) => <List.Icon {...props} icon="history" />}
-            />
-            <List.Item
-              onPress={toggleFetchTask}
-              title={isRegistered ? "停用自動同步" : "啟用自動同步"}
-              left={(props) =>
-                isRegistered ? (
-                  <List.Icon {...props} icon="sync" />
-                ) : (
-                  <List.Icon {...props} icon="sync-off" />
-                )
-              }
-            />
-          </List.Section>
-        </Card>
+          {log != "" && (
+            <Card mode="contained">
+              <Card.Content>
+                <Text variant="titleLarge">同步日誌</Text>
+                <ScrollView className="h-40" nestedScrollEnabled={true}>
+                  <Text>{log}</Text>
+                </ScrollView>
+              </Card.Content>
+            </Card>
+          )}
+          <Card mode="contained">
+            <Card.Content>
+              <Text variant="titleLarge">自動同步</Text>
+            </Card.Content>
+            <List.Section>
+              <List.Item
+                title="自動同步狀態"
+                description={isRegistered ? "已啟用" : "未啟用"}
+                left={(props) => <List.Icon {...props} icon="cog" />}
+              />
+              <List.Item
+                title="自動同步"
+                description={
+                  lastAutoSync === "" ? "從未自動同步" : lastAutoSync
+                }
+                left={(props) => <List.Icon {...props} icon="history" />}
+              />
+              <List.Item
+                onPress={toggleFetchTask}
+                title={isRegistered ? "停用自動同步" : "啟用自動同步"}
+                left={(props) =>
+                  isRegistered ? (
+                    <List.Icon {...props} icon="sync" />
+                  ) : (
+                    <List.Icon {...props} icon="sync-off" />
+                  )
+                }
+              />
+            </List.Section>
+          </Card>
+        </ScrollView>
       </View>
     </>
   );
