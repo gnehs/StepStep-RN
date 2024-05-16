@@ -61,11 +61,11 @@ const syncData = async (
   // get past 7 days and aggregate the data by hour
   const tasks = days * 24;
   const now = new Date();
-  const past = new Date(now.getTime() - tasks * 60 * 60 * 1000);
-  // set minutes & seconds to 0
-  past.setMinutes(0);
-  past.setSeconds(0);
-  past.setMilliseconds(0);
+  // set minutes, seconds, and milliseconds to 0 for now
+  now.setMinutes(0);
+  now.setSeconds(0);
+  now.setMilliseconds(0);
+  const past = new Date(now.getTime() - (tasks - 1) * 60 * 60 * 1000);
   let result: {
     distance: string[];
     step: string[];
