@@ -25,7 +25,10 @@ const onEvent = async (taskId: string) => {
   console.log("[BackgroundFetch] task: ", taskId);
   console.log(`Got background fetch call at date: ${new Date().toISOString()}`);
   // Do your background work...
-  await syncData(1);
+  await syncData({
+    days: 1,
+    isAutoSync: true,
+  });
 
   await AsyncStorage.setItem("last-auto-sync", new Date().toLocaleString());
   // IMPORTANT:  You must signal to the OS that your task is complete.
@@ -42,22 +45,28 @@ async function registerBackgroundFetchAsync() {
     onTimeout
   );
 }
-const syncData = async (
-  days: number,
-  logger: (message: string) => void = console.log
-) => {
+const syncData = async ({
+  days = 1,
+  isAutoSync = false,
+  logger = console.log,
+}: {
+  days?: number;
+  isAutoSync?: boolean;
+  logger?: (message: string) => void;
+}) => {
   const syncURL = (await AsyncStorage.getItem("sync-api-url")) ?? "";
   // initialize the client
   logger("正在初始化...");
   await initialize();
-
-  // request permissions
-  logger("正在請求權限...");
-  await requestPermission([
-    { accessType: "read", recordType: "Distance" },
-    { accessType: "read", recordType: "Steps" },
-    { accessType: "read", recordType: "ActiveCaloriesBurned" },
-  ]);
+  if (!isAutoSync) {
+    // request permissions
+    logger("正在請求權限...");
+    await requestPermission([
+      { accessType: "read", recordType: "Distance" },
+      { accessType: "read", recordType: "Steps" },
+      { accessType: "read", recordType: "ActiveCaloriesBurned" },
+    ]);
+  }
   // get past 7 days and aggregate the data by hour
   const tasks = days * 24;
   const now = new Date();
@@ -161,8 +170,11 @@ export default function Index() {
 
     // sync the data
     setLoading(true);
-    let syncResult = await syncData(days, (message) => {
-      setLog((log) => message + "\n" + log);
+    let syncResult = await syncData({
+      days,
+      logger: (message) => {
+        setLog((log) => message + "\n" + log);
+      },
     });
     setLoading(false);
     await registerBackgroundFetchAsync();
