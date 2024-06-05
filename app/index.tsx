@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { View, ScrollView } from "react-native";
-import BackgroundFetch from "react-native-background-fetch";
+import ReactNativeForegroundService from "@supersami/rn-foreground-service";
 
 import {
   TextInput,
@@ -21,30 +21,29 @@ import {
 } from "react-native-health-connect";
 import { Alert } from "react-native";
 
-const onEvent = async (taskId: string) => {
-  console.log("[BackgroundFetch] task: ", taskId);
-  console.log(`Got background fetch call at date: ${new Date().toISOString()}`);
-  // Do your background work...
-  await syncData({
-    days: 1,
-    isAutoSync: true,
-  });
+ReactNativeForegroundService.register();
 
-  await AsyncStorage.setItem("last-auto-sync", new Date().toLocaleString());
-  // IMPORTANT:  You must signal to the OS that your task is complete.
-  BackgroundFetch.finish(taskId);
-};
-const onTimeout = async (taskId: string) => {
-  console.warn("[BackgroundFetch] TIMEOUT task: ", taskId);
-  BackgroundFetch.finish(taskId);
-};
-async function registerBackgroundFetchAsync() {
-  return await BackgroundFetch.configure(
-    { minimumFetchInterval: 60 },
-    onEvent,
-    onTimeout
-  );
-}
+ReactNativeForegroundService.add_task(
+  async () => {
+    console.log(
+      `Got background fetch call at date: ${new Date().toISOString()}`,
+    );
+    // Do your background work...
+    await syncData({
+      days: 1,
+      isAutoSync: true,
+    });
+
+    await AsyncStorage.setItem("last-auto-sync", new Date().toLocaleString());
+  },
+  {
+    delay: 1000 * 60 * 60 // 1 hour,
+    onLoop: true,
+    taskId: "background-sync-task",
+    onError: (e) => console.log(`Error logging:`, e),
+  },
+);
+
 const syncData = async ({
   days = 1,
   isAutoSync = false,
@@ -118,7 +117,7 @@ const syncData = async ({
     result.step.push(stepsResult.COUNT_TOTAL.toString());
     result.time.push(startTime.toISOString());
     result.energy.push(
-      activeCaloriesBurnedResult.ACTIVE_CALORIES_TOTAL.inKilocalories.toString()
+      activeCaloriesBurnedResult.ACTIVE_CALORIES_TOTAL.inKilocalories.toString(),
     );
   }
   console.log("time:", new Date().getTime() - now.getTime(), "ms");
@@ -177,7 +176,23 @@ export default function Index() {
       },
     });
     setLoading(false);
-    await registerBackgroundFetchAsync();
+    ReactNativeForegroundService.start({
+      id: 1244,
+      title: "餅餅踏踏",
+      message: "正在背景定時同步你的步步資料",
+      icon: "ic_launcher",
+      button: false,
+      button2: false,
+      buttonText: "Button",
+      // button2Text: "Anther Button",
+      buttonOnPress: "cray",
+      setOnlyAlertOnce: true,
+      color: "#000000",
+      // progress: {
+      //   max: 100,
+      //   curr: 50,
+      // },
+    });
     Alert.alert("同步成功", syncResult);
   }
 
