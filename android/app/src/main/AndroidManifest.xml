@@ -21,11 +21,11 @@
   <application android:name=".MainApplication" android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:allowBackup="true" android:theme="@style/AppTheme">
   <meta-data
     android:name="com.supersami.foregroundservice.notification_channel_name"
-    android:value="Sticky Title"
+    android:value="StepStep"
   />
   <meta-data
     android:name="com.supersami.foregroundservice.notification_channel_description"
-    android:value="Sticky Description."
+    android:value="StepStep is running in the background to track your steps."
   />
   <meta-data
     android:name="com.supersami.foregroundservice.notification_color"

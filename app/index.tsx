@@ -37,7 +37,7 @@ ReactNativeForegroundService.add_task(
     await AsyncStorage.setItem("last-auto-sync", new Date().toLocaleString());
   },
   {
-    delay: 1000 * 60 * 60 // 1 hour,
+    delay: 1000 * 60 * 60, // 1 hour
     onLoop: true,
     taskId: "background-sync-task",
     onError: (e) => console.log(`Error logging:`, e),
