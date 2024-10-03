@@ -34,10 +34,10 @@ ReactNativeForegroundService.add_task(
       isAutoSync: true,
     });
 
-    await AsyncStorage.setItem("last-auto-sync", new Date().toLocaleString());
+    await AsyncStorage.setItem("last-auto-sync", new Date().toISOString());
   },
   {
-    delay: 1000 * 60 * 60, // 1 hour
+    delay: 1000 * 60 * 60 * 3,
     onLoop: true,
     taskId: "background-sync-task",
     onError: (e) => console.log(`Error logging:`, e),
@@ -156,6 +156,16 @@ export default function Index() {
   async function updateSyncURL() {
     await AsyncStorage.setItem("sync-api-url", syncValue);
   }
+  function calculatePeriod(): number {
+    const lastAutoSyncDate = new Date(lastAutoSync);
+    const now = new Date();
+    const diff = now.getTime() - lastAutoSyncDate.getTime();
+    const hours = diff / 1000 / 60 / 60;
+    let days = hours / 24;
+    console.log("From last auto sync days: ", days);
+    if (days > 7) days = 7;
+    return Math.floor(days);
+  }
   async function handleSyncButtonClick(days: number = 1) {
     // verify the URL
     let url;
@@ -183,15 +193,16 @@ export default function Index() {
       icon: "ic_launcher",
       button: false,
       button2: false,
-      buttonText: "Button",
+      // buttonText: "Button",
       // button2Text: "Anther Button",
-      buttonOnPress: "cray",
+      // buttonOnPress: "cray",
       setOnlyAlertOnce: true,
       color: "#000000",
       // progress: {
       //   max: 100,
       //   curr: 50,
       // },
+      ongoing: true,
     });
     Alert.alert("同步成功", syncResult);
   }
@@ -226,7 +237,7 @@ export default function Index() {
                 onChangeText={setSyncValue}
               />
               <View className="flex flex-row gap-2 my-2">
-                {[1, 5, 7].map((i) => {
+                {[1, 3, 5, 7].map((i) => {
                   return (
                     <Chip
                       onPress={() => setPeriod(i)}
@@ -244,20 +255,38 @@ export default function Index() {
                   );
                 })}
               </View>
-              <Button
-                mode="contained"
-                onPress={(e) => handleSyncButtonClick(period)}
-                loading={loading}
-                disabled={loading}
-                style={{
-                  backgroundColor: theme.colors.primary,
-                  borderRadius: 10,
-                }}
-              >
-                同步 {period} 天資料
-              </Button>
+              <View className="flex gap-1">
+                <Button
+                  mode="contained"
+                  onPress={(e) => handleSyncButtonClick(period)}
+                  loading={loading}
+                  disabled={loading}
+                  style={{
+                    backgroundColor: theme.colors.primary,
+                    borderRadius: 10,
+                  }}
+                >
+                  同步 {period} 天資料
+                </Button>
+
+                <Button
+                  mode="contained"
+                  onPress={(e) => calculatePeriod()}
+                  loading={loading}
+                  disabled={
+                    loading || lastAutoSync === "" || calculatePeriod() === 0
+                  }
+                  style={{
+                    backgroundColor: theme.colors.secondary,
+                    borderRadius: 10,
+                  }}
+                >
+                  同步遺漏的資料（自上次同步）
+                </Button>
+              </View>
             </Card.Content>
           </Card>
+
           {log != "" && (
             <Card mode="contained">
               <Card.Content>
@@ -274,9 +303,11 @@ export default function Index() {
             </Card.Content>
             <List.Section>
               <List.Item
-                title="自動同步"
+                title="最近一次自動同步時間"
                 description={
-                  lastAutoSync === "" ? "從未自動同步" : lastAutoSync
+                  lastAutoSync === ""
+                    ? "從未自動同步"
+                    : new Date(lastAutoSync).toLocaleString()
                 }
                 left={(props) => <List.Icon {...props} icon="history" />}
               />
