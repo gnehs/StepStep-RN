@@ -21,12 +21,23 @@ import {
 } from "react-native-health-connect";
 import { Alert } from "react-native";
 
-ReactNativeForegroundService.register();
+const config = {
+  config: {
+    alert: true,
+    onServiceErrorCallBack: function () {
+      console.warn(
+        "[ReactNativeForegroundService] onServiceErrorCallBack",
+        arguments
+      );
+    },
+  },
+};
+ReactNativeForegroundService.register(config);
 
 ReactNativeForegroundService.add_task(
   async () => {
     console.log(
-      `Got background fetch call at date: ${new Date().toISOString()}`,
+      `Got background fetch call at date: ${new Date().toISOString()}`
     );
     // Do your background work...
     await syncData({
@@ -41,7 +52,7 @@ ReactNativeForegroundService.add_task(
     onLoop: true,
     taskId: "background-sync-task",
     onError: (e) => console.log(`Error logging:`, e),
-  },
+  }
 );
 
 const syncData = async ({
@@ -117,7 +128,7 @@ const syncData = async ({
     result.step.push(stepsResult.COUNT_TOTAL.toString());
     result.time.push(startTime.toISOString());
     result.energy.push(
-      activeCaloriesBurnedResult.ACTIVE_CALORIES_TOTAL.inKilocalories.toString(),
+      activeCaloriesBurnedResult.ACTIVE_CALORIES_TOTAL.inKilocalories.toString()
     );
   }
   console.log("time:", new Date().getTime() - now.getTime(), "ms");
